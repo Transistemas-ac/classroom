@@ -14,6 +14,9 @@ import { AuthProvider } from "@/src/context/AuthContext";
 export const metadata: Metadata = {
   title: "Transistemas",
   description: "Aula de Transistemas",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

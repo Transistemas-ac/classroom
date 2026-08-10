@@ -73,6 +73,10 @@
 
   &.courses-section {
     border-color: rgba($blue, 0.3);
+
+    .list-content.scrollable {
+      max-height: none;
+    }
   }
 
   &.subscriptions-section {
