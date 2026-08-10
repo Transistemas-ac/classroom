@@ -53,8 +53,22 @@ $shadow-hover-dark: rgba(0, 0, 0, 0.5);
 // Fonts
 @import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
 
+$font-ui: "Work Sans", sans-serif;
+
 @font-face {
   font-family: "Robot Crush";
   src: url("/fonts/Robot Crush.ttf") format("truetype");
   font-display: swap;
+}
+
+html,
+body {
+  font-family: $font-ui;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }

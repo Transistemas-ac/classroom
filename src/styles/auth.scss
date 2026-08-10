@@ -11,7 +11,7 @@
   background: $black;
   color: $white;
   margin-top: 80px;
-  font-family: "Work Sans", sans-serif;
+  font-family: $font-ui;
   justify-content: center;
 
   .rainbow {
@@ -57,7 +57,7 @@
       color: $white;
       outline: none;
       transition: border 0.3s;
-      font-family: "Work Sans", sans-serif;
+      font-family: $font-ui;
 
       &:focus {
         border-color: $blue;
@@ -79,7 +79,7 @@
       border-radius: 0.5rem;
       cursor: pointer;
       transition: background 0.3s, transform 0.2s;
-      font-family: "Work Sans", sans-serif;
+      font-family: $font-ui;
 
       &:hover {
         transform: scale(1.05);

@@ -179,13 +179,15 @@ function UserList() {
                       {ROLE_LABELS[user.credentials] ?? "Estudiante"}
                     </span>
                   </div>
-                  <span className="item-id">ID: {user.id}</span>
+                  <div className="item-meta">
+                    <span className="item-id">ID: {user.id}</span>
+                    {user.pronouns && (
+                      <span className="item-detail">({user.pronouns})</span>
+                    )}
+                  </div>
                   <span className="item-detail">{user.email}</span>
                   {user.team && (
                     <span className="item-detail">🏢 {user.team}</span>
-                  )}
-                  {user.pronouns && (
-                    <span className="item-detail">({user.pronouns})</span>
                   )}
                 </div>
                 <div className="item-actions">
@@ -213,7 +215,10 @@ function UserList() {
                   {loggedUser?.id !== user.id && (
                     <button
                       className="action-btn red"
-                      onClick={() => handleDeleteUser(user.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteUser(user.id);
+                      }}
                       disabled={isDeleting === user.id}
                     >
                       Borrar

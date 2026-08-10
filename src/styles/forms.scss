@@ -58,7 +58,7 @@
     padding: 0.6rem 0.9rem;
     color: $white-text;
     font-size: 0.95rem;
-    font-family: "Work Sans", sans-serif;
+    font-family: $font-ui;
     @include transition();
 
     &:focus {
@@ -103,7 +103,7 @@
   padding: 0.35rem 0.6rem;
   color: $white-text;
   font-size: 0.85rem;
-  font-family: "Work Sans", sans-serif;
+  font-family: $font-ui;
   cursor: pointer;
   margin-bottom: 0.25rem;
 

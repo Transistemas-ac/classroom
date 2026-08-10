@@ -4,7 +4,7 @@
 .home-container {
   min-height: 100vh;
   background: $dark-background;
-  font-family: "Work Sans", sans-serif;
+  font-family: $font-ui;
   padding: 2rem;
   color: $white-text;
   margin-top: 80px;
@@ -73,9 +73,17 @@
 
   &.courses-section {
     border-color: rgba($blue, 0.3);
+    height: 100%;
+    min-height: 0;
+
+    .list-container {
+      min-height: 0;
+    }
 
     .list-content.scrollable {
+      height: 100%;
       max-height: none;
+      min-height: 0;
     }
   }
 
@@ -349,8 +357,33 @@
   }
 
   &.course-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: flex-start;
+    gap: 1rem;
     padding: 1.5rem 2rem;
+
+    .item-avatar {
+      margin-right: 0;
+    }
+
+    .item-info {
+      min-width: 0;
+    }
+
+    .item-header {
+      gap: 0.5rem 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      margin-left: 0;
+    }
+
+    .item-actions {
+      min-width: 9rem;
+      max-width: 100%;
+    }
   }
 }
 
@@ -420,19 +453,69 @@
 }
 
 .item-id {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
   font-size: 0.85rem;
   color: $gray-text;
   background: rgba($gray-light-dark, 0.6);
   padding: 0.2rem 0.5rem;
   border-radius: 8px;
   margin-top: 0.25rem;
-  width: 50px;
+  white-space: nowrap;
+  width: fit-content;
 }
 
 .item-detail {
   font-size: 0.9rem;
   color: $gray-text;
   line-height: 1.4;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.course-description {
+  max-width: 65ch;
+  margin: 0;
+}
+
+.course-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.date-info {
+  display: block;
+  color: $gray-text;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.course-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.15rem;
+}
+
+.course-link {
+  color: $blue;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    color: color.adjust($blue, $lightness: 12%);
+    text-decoration: underline;
+  }
 }
 
 .credential-badge,
@@ -491,7 +574,7 @@
   font-weight: 600;
   cursor: pointer;
   @include transition();
-  font-family: "Work Sans", sans-serif;
+  font-family: $font-ui;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -648,5 +731,22 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+
+  .list-item.course-item {
+    grid-template-columns: auto minmax(0, 1fr);
+
+    .item-actions {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: stretch;
+
+      .action-btn {
+        flex: 1 1 9rem;
+      }
+    }
   }
 }
