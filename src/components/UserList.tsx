@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useFetchUsers from "@/src/hooks/useFetchUsers";
+import { useAuthContext } from "@/src/context/AuthContext";
 import type { User } from "@/src/types";
+import { ROLE_COLORS, ROLE_ICONS, ROLE_LABELS } from "@/src/types";
 
 function UserList() {
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState<number | null>(null);
   const router = useRouter();
+  const { user: loggedUser } = useAuthContext();
 
   useFetchUsers(setUsers, setUsersLoading);
 
@@ -41,7 +45,6 @@ function UserList() {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
 
@@ -49,7 +52,8 @@ function UserList() {
           setUsers(users.filter((user) => user.id !== userId));
           console.log("✅ User deleted successfully");
         } else {
-          console.error("❌ Error deleting user");
+          const data = await response.json().catch(() => ({}));
+          window.alert(data.message ?? "❌ Error eliminando usuarie");
         }
       } catch (error) {
         console.error("❌ Error deleting user:", error);
@@ -59,10 +63,39 @@ function UserList() {
     }
   };
 
-  const storedUser = localStorage.getItem("user");
-  const loggedUser: User | undefined = storedUser
-    ? JSON.parse(storedUser)
-    : undefined;
+  const handleRoleChange = async (user: User, newRole: string) => {
+    if (newRole === user.credentials) return;
+    setIsUpdatingRole(user.id);
+    try {
+      const response = await fetch(`/api/user/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ credentials: newRole }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        window.alert(data.message ?? "❌ Error cambiando el rol");
+        return;
+      }
+
+      setUsers(
+        users.map((u) =>
+          u.id === user.id
+            ? { ...u, credentials: newRole as User["credentials"] }
+            : u
+        )
+      );
+    } catch (error) {
+      console.error("❌ Error updating role:", error);
+    } finally {
+      setIsUpdatingRole(null);
+    }
+  };
+
   const sortedUsers = loggedUser
     ? [...users].sort((a, b) => {
         if (a.id === loggedUser.id) return -1;
@@ -90,12 +123,15 @@ function UserList() {
           </button>
         </div>
         <div className="header-stats">
-          <span className="stat-item profe">
+          <span className="stat-item purple">
             Profes: {users.filter((u) => u.credentials === "teacher").length}
           </span>
-          <span className="stat-item estudiante">
+          <span className="stat-item blue">
             Estudiantes:{" "}
             {users.filter((u) => u.credentials === "student").length}
+          </span>
+          <span className="stat-item green">
+            Admins: {users.filter((u) => u.credentials === "admin").length}
           </span>
         </div>
       </div>
@@ -120,9 +156,7 @@ function UserList() {
                 onClick={() => router.push(`/user/${user.id}`)}
               >
                 <div
-                  className={`item-avatar ${
-                    user.credentials === "teacher" ? "purple" : "blue"
-                  }`}
+                  className={`item-avatar ${ROLE_COLORS[user.credentials] ?? "blue"}`}
                 >
                   {user.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -139,12 +173,10 @@ function UserList() {
                   <div className="item-header">
                     <span className="item-name">{user.username}</span>
                     <span
-                      className={`credential-badge ${
-                        user.credentials === "teacher" ? "purple" : "blue"
-                      }`}
+                      className={`credential-badge ${ROLE_COLORS[user.credentials] ?? "blue"}`}
                     >
-                      {user.credentials === "teacher" ? "🎓" : "📚"}{" "}
-                      {user.credentials === "teacher" ? "Profe" : "Estudiante"}
+                      {ROLE_ICONS[user.credentials] ?? "📚"}{" "}
+                      {ROLE_LABELS[user.credentials] ?? "Estudiante"}
                     </span>
                   </div>
                   <span className="item-id">ID: {user.id}</span>
@@ -157,19 +189,36 @@ function UserList() {
                   )}
                 </div>
                 <div className="item-actions">
+                  {loggedUser?.id === user.id ? (
+                    <span className="item-detail">(vos)</span>
+                  ) : (
+                    <select
+                      className="role-select"
+                      value={user.credentials}
+                      disabled={isUpdatingRole === user.id}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleRoleChange(user, e.target.value)}
+                    >
+                      <option value="student">Estudiante</option>
+                      <option value="teacher">Profe</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  )}
                   <button
                     className="action-btn yellow"
                     onClick={() => router.push(`/user/${user.id}`)}
                   >
                     Editar
                   </button>
-                  <button
-                    className="action-btn red"
-                    onClick={() => handleDeleteUser(user.id)}
-                    disabled={isDeleting === user.id}
-                  >
-                    Borrar
-                  </button>
+                  {loggedUser?.id !== user.id && (
+                    <button
+                      className="action-btn red"
+                      onClick={() => handleDeleteUser(user.id)}
+                      disabled={isDeleting === user.id}
+                    >
+                      Borrar
+                    </button>
+                  )}
                   {user.link && (
                     <a
                       href={user.link}

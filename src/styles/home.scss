@@ -147,6 +147,11 @@
     border: 2px solid $blue;
     color: color.adjust($blue, $lightness: 20%);
   }
+
+  .green {
+    border: 2px solid $success;
+    color: color.adjust($success, $lightness: 20%);
+  }
 }
 
 .count-badge {
@@ -218,6 +223,7 @@
 .list-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem 0;
 
   &.scrollable {
@@ -277,6 +283,10 @@
   &.purple {
     border-top: 4px solid $purple;
   }
+
+  &.green {
+    border-top: 4px solid $success;
+  }
 }
 
 @keyframes spin {
@@ -326,7 +336,7 @@
 
   &:hover {
     background: rgba($gray-light-dark, 0.5);
-    transform: translateX(8px);
+    box-shadow: inset 4px 0 0 rgba($blue, 0.75);
   }
 
   &.user-item,
@@ -373,6 +383,10 @@
 
   &.purple {
     background: $purple;
+  }
+
+  &.green {
+    background: $success;
   }
 
   &.course-icon {
@@ -503,7 +517,7 @@
 
   &.yellow {
     background: $yellow;
-    color: $white;
+    color: $black;
 
     &:hover {
       background: color.adjust($yellow, $lightness: 10%);
@@ -517,6 +531,16 @@
 
     &:hover {
       background: color.adjust($danger, $lightness: 10%);
+      transform: translateY(-2px);
+    }
+  }
+
+  &.green {
+    background: $success;
+    color: $white-text;
+
+    &:hover {
+      background: color.adjust($success, $lightness: 10%);
       transform: translateY(-2px);
     }
   }

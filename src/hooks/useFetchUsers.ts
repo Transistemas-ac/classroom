@@ -11,7 +11,7 @@ const useFetchUsers = (
       try {
         const response = await fetch("/api/user");
         const data = await response.json();
-        setUsers(data);
+        setUsers(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching users:", err);
       } finally {

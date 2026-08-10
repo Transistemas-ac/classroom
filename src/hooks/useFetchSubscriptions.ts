@@ -11,7 +11,7 @@ const useFetchSubscriptions = (
       try {
         const response = await fetch("/api/subscription");
         const data = await response.json();
-        setSubscriptions(data);
+        setSubscriptions(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching subscriptions:", err);
       } finally {

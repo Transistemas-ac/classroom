@@ -2,6 +2,20 @@ body {
   background-color: #1b1b1a;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #fe98cc;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #fe98cc;
+  color: #1a1b1b;
+}
+
 .loading {
   display: flex;
   justify-content: center;

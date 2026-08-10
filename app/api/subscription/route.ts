@@ -1,17 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import type { User as PrismaUser } from "@prisma/client";
 import prisma from "@/src/lib/prisma";
 import { HttpError } from "@/src/lib/HttpError";
 import { apiHandler } from "@/src/lib/apiHandler";
-import { checkCredentials } from "@/src/lib/auth";
+import { canManageCourse, getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/src/lib/auth";
+import { recordAudit } from "@/src/lib/audit";
+import { sendUserEmail } from "@/src/lib/email";
+import { getPagination, paginatedResponse } from "@/src/lib/pagination";
 
-export const GET = apiHandler(async () => {
-  const subs = await prisma.subscription.findMany({
-    include: {
-      course: true,
-      user: true,
-    },
-  });
+const createSubscriptionSchema = z.object({
+  userId: z.number().int().positive(),
+  courseId: z.number().int().positive(),
+  credentials: z.enum(["teacher", "student"]).optional(),
+});
+
+export const GET = apiHandler(async (req: NextRequest) => {
+  const authUser = await getAuthUser(req);
+  if (!authUser) return unauthorizedResponse();
+
+  const where =
+    authUser.credentials === "admin"
+      ? undefined
+      : authUser.credentials === "teacher"
+        ? { course_id: { in: authUser.taughtCourses } }
+        : { user_id: authUser.id };
+
+  const { requested, page, pageSize, skip } = getPagination(req);
+  const [subs, total] = await Promise.all([
+    prisma.subscription.findMany({
+      where,
+      ...(requested ? { skip, take: pageSize } : {}),
+      include: {
+        course: true,
+        user: true,
+      },
+    }),
+    prisma.subscription.count({ where }),
+  ]);
 
   const safeSubs = subs.map((s) => {
     if (s.user && typeof s.user === "object") {
@@ -21,39 +47,71 @@ export const GET = apiHandler(async () => {
     return s;
   });
 
-  return NextResponse.json(safeSubs);
+  return NextResponse.json(requested ? paginatedResponse(safeSubs, page, pageSize, total) : safeSubs);
 });
 
 export const POST = apiHandler(async (req: NextRequest) => {
-  const body = await req.json().catch(() => ({}));
+  const authUser = await getAuthUser(req);
+  if (!authUser) return unauthorizedResponse();
 
-  const check = await checkCredentials({
-    req,
-    allowed: ["student", "teacher"],
-    body,
-    path: "/subscription",
-    method: "POST",
-  });
-  if (!check.ok) {
-    return NextResponse.json({ message: check.message }, { status: check.status });
+  const body = await req.json().catch(() => ({}));
+  const parsed = createSubscriptionSchema.parse(body);
+
+  const canManage = await canManageCourse(authUser, parsed.courseId);
+  const canSelfAssignAsTeacher =
+    authUser.credentials === "teacher" &&
+    parsed.userId === authUser.id &&
+    parsed.credentials === "teacher";
+
+  if (!canManage && !canSelfAssignAsTeacher && parsed.userId !== authUser.id) {
+    return forbiddenResponse("❌ Forbidden: Students can only enroll themselves");
+  }
+  if (!canManage && !canSelfAssignAsTeacher && parsed.credentials !== undefined) {
+    return forbiddenResponse("❌ Forbidden: Students cannot assign roles");
   }
 
-  const { userId, courseId, credentials } = body;
-
   const course = await prisma.course.findUnique({
-    where: { id: Number(courseId) },
+    where: { id: parsed.courseId },
   });
   if (!course) throw new HttpError(404, "❌ Course not found");
+  if (course.status === "archived") {
+    return forbiddenResponse("❌ Este curso está archivado");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: parsed.userId },
+  });
+  if (!user) throw new HttpError(404, "❌ User not found");
+  if (parsed.credentials === "teacher" && user.credentials !== "teacher") {
+    return forbiddenResponse("❌ Solo las cuentas profe pueden tener una inscripción profe");
+  }
 
   try {
     const relation = await prisma.subscription.create({
       data: {
-        user_id: Number(userId),
-        course_id: Number(courseId),
-        credentials: credentials ?? "student",
+        user_id: parsed.userId,
+        course_id: parsed.courseId,
+        credentials: canManage || canSelfAssignAsTeacher
+          ? (parsed.credentials ?? "student")
+          : "student",
       },
     });
-    console.log("✅ User enrolled in course", relation);
+    await recordAudit({
+      actorId: authUser.id,
+      action: "subscription.created",
+      entityType: "subscription",
+      metadata: parsed,
+    });
+    if (parsed.userId !== authUser.id) {
+      await sendUserEmail({
+        userId: parsed.userId,
+        kind: "course_enrollment",
+        subject: `Te inscribieron en ${course.title}`,
+        title: `Nueva inscripción: ${course.title}`,
+        body: "Ya podés entrar al aula y ver el contenido del curso.",
+        link: `${process.env.APP_URL ?? ""}/course/${course.id}`,
+      });
+    }
     return NextResponse.json(relation, { status: 201 });
   } catch (err) {
     if ((err as { code?: string }).code === "P2002") {
@@ -66,24 +124,25 @@ export const POST = apiHandler(async (req: NextRequest) => {
   }
 });
 
-export const DELETE = apiHandler(async (req: NextRequest) => {
-  const body = await req.json().catch(() => ({}));
+const deleteSubscriptionSchema = z.object({
+  userId: z.number().int().positive(),
+  courseId: z.number().int().positive(),
+});
 
-  const check = await checkCredentials({
-    req,
-    allowed: ["student", "teacher"],
-    body,
-    path: "/subscription",
-    method: "DELETE",
-  });
-  if (!check.ok) {
-    return NextResponse.json({ message: check.message }, { status: check.status });
+export const DELETE = apiHandler(async (req: NextRequest) => {
+  const authUser = await getAuthUser(req);
+  if (!authUser) return unauthorizedResponse();
+
+  const body = await req.json().catch(() => ({}));
+  const parsed = deleteSubscriptionSchema.parse(body);
+
+  const canManage = await canManageCourse(authUser, parsed.courseId);
+  if (!canManage && parsed.userId !== authUser.id) {
+    return forbiddenResponse("❌ Forbidden: Students can only unsubscribe themselves");
   }
 
-  const { userId, courseId } = body;
-
   const course = await prisma.course.findUnique({
-    where: { id: Number(courseId) },
+    where: { id: parsed.courseId },
   });
   if (!course) throw new HttpError(404, "❌ Course not found");
 
@@ -91,10 +150,17 @@ export const DELETE = apiHandler(async (req: NextRequest) => {
     await prisma.subscription.delete({
       where: {
         user_id_course_id: {
-          user_id: Number(userId),
-          course_id: Number(courseId),
+          user_id: parsed.userId,
+          course_id: parsed.courseId,
         },
       },
+    });
+
+    await recordAudit({
+      actorId: authUser.id,
+      action: "subscription.deleted",
+      entityType: "subscription",
+      metadata: parsed,
     });
 
     return NextResponse.json({ message: "✅ User removed from course" });

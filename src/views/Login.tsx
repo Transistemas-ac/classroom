@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@/src/types";
 
@@ -12,14 +13,13 @@ const Login = ({
 }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
-  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.type === "text") setUsername(e.target.value);
-    if (e.target.type === "password") setPassword(e.target.value);
-  };
+  const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
     try {
       const response = await fetch("/api/login", {
         method: "POST",
@@ -35,46 +35,16 @@ const Login = ({
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Login error:", data.error ?? data.message);
+        setError(data.message ?? "Error al iniciar sesión");
         return;
       }
 
-      const {
-        id,
-        username: dbUsername,
-        email,
-        credentials,
-        pronouns,
-        first_name,
-        last_name,
-        description,
-        photo_url,
-        link,
-        team,
-        subscriptions,
-      } = data.user;
-
-      const userData: User = {
-        id,
-        username: dbUsername,
-        email,
-        credentials,
-        pronouns,
-        first_name,
-        last_name,
-        description,
-        photo_url,
-        link,
-        team,
-        subscriptions,
-        loggedIn: true,
-      };
-
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("token", data.token);
-    } catch (error) {
-      console.error("Login error:", error);
+      setUser({ ...data.user, loggedIn: true });
+      localStorage.setItem("user", JSON.stringify({ ...data.user, loggedIn: true }));
+      router.push("/home");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Error de conexión");
     }
   };
 
@@ -85,22 +55,24 @@ const Login = ({
         <img src="/cat.png" alt="Cat" className="svg cat" />
       </div>
       <h1>Bienvenide</h1>
-      <form>
+      <form onSubmit={handleLogin}>
         <input
           value={username}
           type="text"
           placeholder="Nombre de usuario"
-          onChange={onInputChange}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <input
           value={password}
           type="password"
           placeholder="Contraseña"
-          onChange={onInputChange}
+          onChange={(e) => setPassword(e.target.value)}
         />
-        <button type="submit" onClick={handleLogin}>
-          Iniciar sesión
-        </button>
+        {error && <p className="form-error">{error}</p>}
+        <button type="submit">Iniciar sesión</button>
+        <Link className="link" href="/forgot-password">
+          Olvidé mi contraseña
+        </Link>
         <Link className="link" href="/register">
           Registrarse
         </Link>

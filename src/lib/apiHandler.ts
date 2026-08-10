@@ -8,6 +8,35 @@ export function apiHandler(
   fn: (req: NextRequest, ctx: ApiContext) => Promise<NextResponse>
 ) {
   return async (req: NextRequest, ctx: ApiContext) => {
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+      const fetchSite = req.headers.get("sec-fetch-site");
+      const origin = req.headers.get("origin");
+      const host = req.headers.get("host");
+
+      if (fetchSite === "cross-site") {
+        return NextResponse.json(
+          { success: false, message: "❌ Cross-site request blocked" },
+          { status: 403 }
+        );
+      }
+
+      if (origin && host) {
+        try {
+          if (new URL(origin).host !== host) {
+            return NextResponse.json(
+              { success: false, message: "❌ Origin not allowed" },
+              { status: 403 }
+            );
+          }
+        } catch {
+          return NextResponse.json(
+            { success: false, message: "❌ Invalid origin" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     try {
       return await fn(req, ctx);
     } catch (error) {

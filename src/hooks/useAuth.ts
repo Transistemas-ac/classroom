@@ -3,17 +3,21 @@ import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@/src/types";
 
 const refreshUserData = async (
-  userId: number,
   setUser: Dispatch<SetStateAction<User | undefined>>
 ) => {
   try {
-    const response = await fetch(`/api/user/${userId}`, {
+    const response = await fetch("/api/me", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
+
+    if (response.status === 401 || response.status === 403) {
+      localStorage.removeItem("user");
+      setUser(undefined);
+      return;
+    }
 
     const data = await response.json();
 
@@ -55,19 +59,7 @@ export function useAuth(
       setAuthLoading(true);
 
       try {
-        let userId = user?.id;
-
-        if (!userId) {
-          const storedUser = localStorage.getItem("user");
-          if (storedUser) {
-            const userData = JSON.parse(storedUser);
-            userId = userData?.id;
-          }
-        }
-
-        if (userId) {
-          await refreshUserData(userId, setUser);
-        }
+        await refreshUserData(setUser);
       } finally {
         setAuthLoading(false);
       }

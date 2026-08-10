@@ -31,9 +31,14 @@ function Navbar({
   setUser: Dispatch<SetStateAction<User | undefined>>;
 }) {
   const router = useRouter();
-  const handleLogout = () => {
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Error logging out:", err);
+    }
     localStorage.removeItem("user");
-    localStorage.removeItem("token");
     setUser(undefined);
     router.push("/login");
   };

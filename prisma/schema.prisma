@@ -3,14 +3,41 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DB_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum CredentialsType {
+  admin
   teacher
   student
 }
+
+enum PostType {
+  anuncio
+  tarea
+  material
+}
+
+enum CourseStatus {
+  active
+  archived
+}
+
+enum EventType {
+  clase
+  entrega
+  evento
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  excused
+}
+
 model User {
   id          Int             @id @default(autoincrement())
   username    String          @unique
@@ -24,8 +51,19 @@ model User {
   photo_url   String?
   link        String?
   team        String?
+  email_notifications Boolean @default(true)
 
   subscriptions     Subscription[]
+  posts             Post[]         @relation("PostAuthor")
+  submissions       Submission[]   @relation("SubmissionOwner")
+  graded_submissions Submission[]  @relation("SubmissionGrader")
+  comments          Comment[]
+  calendar_events   CalendarEvent[]
+  attendance_sessions AttendanceSession[]
+  attendance_records AttendanceRecord[]
+  audit_logs        AuditLog[]
+  email_logs        EmailLog[]
+  password_reset_tokens PasswordResetToken[]
 }
 
 model Course {
@@ -36,8 +74,16 @@ model Course {
   end_date       DateTime?
   syllabus_url   String?
   subscription_url String?
+  status         CourseStatus @default(active)
+  allow_late_submissions Boolean @default(true)
+  late_penalty_percent Int?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   subscriptions          Subscription[]
+  posts                  Post[]
+  calendar_events        CalendarEvent[]
+  attendance_sessions    AttendanceSession[]
 }
 
 model Subscription {
@@ -49,4 +95,191 @@ model Subscription {
   course Course @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
   @@id([user_id, course_id])
+  @@index([course_id, credentials])
+}
+
+model Post {
+  id         Int      @id @default(autoincrement())
+  course_id  Int
+  author_id  Int
+  type       PostType
+  title      String
+  body       String?
+  due_date   DateTime?
+  max_score  Int?
+  is_published Boolean @default(true)
+  publish_at DateTime?
+  allow_late_submissions Boolean?
+  late_penalty_percent Int?
+  rubric     Json?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  course      Course       @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  author      User         @relation("PostAuthor", fields: [author_id], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  comments    Comment[]
+  attachments Attachment[]
+
+  @@index([course_id, created_at])
+  @@index([course_id, type, due_date])
+}
+
+model Submission {
+  id           Int      @id @default(autoincrement())
+  post_id      Int
+  user_id      Int
+  body         String?
+  link         String?
+  submitted_at DateTime @default(now())
+  late         Boolean  @default(false)
+  raw_score    Int?
+  score        Int?
+  penalty_percent Int?
+  feedback     String?
+  rubric_scores Json?
+  graded_at    DateTime?
+  graded_by    Int?
+
+  post Post @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user User @relation("SubmissionOwner", fields: [user_id], references: [id], onDelete: Cascade)
+  gradedBy User? @relation("SubmissionGrader", fields: [graded_by], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+
+  @@unique([post_id, user_id])
+  @@index([user_id, submitted_at])
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  post_id    Int
+  user_id    Int
+  body       String
+  created_at DateTime @default(now())
+
+  post Post @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id, created_at])
+}
+
+model Attachment {
+  id            Int          @id @default(autoincrement())
+  post_id       Int?
+  submission_id Int?
+  name          String
+  url           String
+  mime_type     String?
+  size          Int?
+  created_at    DateTime     @default(now())
+
+  post       Post?       @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  submission Submission? @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
+  @@index([submission_id])
+}
+
+model CalendarEvent {
+  id          Int       @id @default(autoincrement())
+  course_id   Int
+  author_id   Int
+  type        EventType @default(evento)
+  title       String
+  description String?
+  starts_at   DateTime
+  ends_at     DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  course Course @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [author_id], references: [id], onDelete: Cascade)
+
+  @@index([course_id, starts_at])
+}
+
+model AttendanceSession {
+  id         Int      @id @default(autoincrement())
+  course_id  Int
+  author_id  Int
+  title      String
+  session_at DateTime
+  created_at DateTime @default(now())
+
+  course  Course @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  author  User   @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([course_id, session_at])
+}
+
+model AttendanceRecord {
+  id         Int              @id @default(autoincrement())
+  session_id Int
+  user_id    Int
+  status     AttendanceStatus @default(absent)
+  note       String?
+
+  session AttendanceSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, user_id])
+  @@index([user_id])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actor_id    Int?
+  action      String
+  entity_type String
+  entity_id   Int?
+  metadata    Json?
+  created_at  DateTime @default(now())
+
+  actor User? @relation(fields: [actor_id], references: [id], onDelete: SetNull)
+
+  @@index([entity_type, entity_id, created_at])
+  @@index([actor_id, created_at])
+}
+
+model EmailLog {
+  id          Int      @id @default(autoincrement())
+  user_id     Int?
+  recipient   String
+  kind        String
+  status      String
+  provider_id String?
+  error       String?
+  created_at  DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([recipient, created_at])
+  @@index([kind, created_at])
+}
+
+model LoginAttempt {
+  id           Int      @id @default(autoincrement())
+  username     String
+  ip_hash      String
+  attempts     Int      @default(0)
+  window_start DateTime @default(now())
+  blocked_until DateTime?
+  updated_at   DateTime @updatedAt
+
+  @@unique([username, ip_hash])
+  @@index([blocked_until])
+}
+
+model PasswordResetToken {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token_hash String   @unique
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, expires_at])
 }

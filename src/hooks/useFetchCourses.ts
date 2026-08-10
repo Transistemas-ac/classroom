@@ -11,7 +11,7 @@ const useFetchCourses = (
       try {
         const response = await fetch("/api/course");
         const data = await response.json();
-        setCourses(data);
+        setCourses(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching courses:", err);
       } finally {

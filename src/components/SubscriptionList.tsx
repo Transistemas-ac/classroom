@@ -3,10 +3,14 @@
 import { useState } from "react";
 import useFetchSubscriptions from "@/src/hooks/useFetchSubscriptions";
 import type { Subscription, User } from "@/src/types";
+import { ROLE_COLORS, ROLE_ICONS, ROLE_LABELS } from "@/src/types";
+import { useAuthContext } from "@/src/context/AuthContext";
 
 function SubscriptionList() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
+  const { user } = useAuthContext();
 
   useFetchSubscriptions(setSubscriptions, setSubscriptionsLoading);
 
@@ -19,9 +23,7 @@ function SubscriptionList() {
     );
   }
 
-  const getCredentialColor = (credentials: string) => {
-    return credentials === "teacher" ? "purple" : "blue";
-  };
+  if (!user || user.credentials === "student") return null;
 
   const getInitials = (user?: User) => {
     if (!user) return "";
@@ -39,6 +41,48 @@ function SubscriptionList() {
       return `${user.first_name} ${user.last_name}`;
     }
     return user.username;
+  };
+
+  const handleRemoveSubscription = async (subscription: Subscription) => {
+    if (
+      !window.confirm(
+        `¿Querés quitar a ${getDisplayName(subscription.user)} de este curso?`
+      )
+    )
+      return;
+
+    setIsRemoving(`${subscription.user_id}-${subscription.course_id}`);
+    try {
+      const response = await fetch("/api/subscription", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: subscription.user_id,
+          courseId: subscription.course_id,
+        }),
+      });
+
+      if (response.ok) {
+        setSubscriptions(
+          subscriptions.filter(
+            (s) =>
+              !(
+                s.user_id === subscription.user_id &&
+                s.course_id === subscription.course_id
+              )
+          )
+        );
+      } else {
+        const data = await response.json().catch(() => ({}));
+        window.alert(data.message ?? "❌ Error al quitar la inscripción");
+      }
+    } catch (error) {
+      console.error("❌ Error removing subscription:", error);
+    } finally {
+      setIsRemoving(null);
+    }
   };
 
   const groupedSubscriptions = subscriptions.reduce<Record<string, Subscription[]>>(
@@ -61,7 +105,6 @@ function SubscriptionList() {
             <h2>⭐ Inscripciones</h2>
             <span className="count-badge yellow">{subscriptions.length}</span>
           </div>
-          <button className="add-btn-header yellow">+</button>
         </div>
       </div>
 
@@ -70,7 +113,6 @@ function SubscriptionList() {
           <div className="empty-state">
             <div className="empty-icon">📝</div>
             <p>No se encontraron inscripciones</p>
-            <button className="add-btn yellow">Crear Inscripción</button>
           </div>
         ) : (
           <div className="subscription-groups">
@@ -92,9 +134,7 @@ function SubscriptionList() {
                         className="list-item subscription-item"
                       >
                         <div
-                          className={`item-avatar ${getCredentialColor(
-                            subscription.credentials
-                          )}`}
+                          className={`item-avatar ${ROLE_COLORS[subscription.credentials] ?? "blue"}`}
                         >
                           {subscription.user?.photo_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -112,16 +152,11 @@ function SubscriptionList() {
                               {getDisplayName(subscription.user)}
                             </span>
                             <span
-                              className={`credential-badge ${getCredentialColor(
-                                subscription.credentials
-                              )}`}
+                              className={`credential-badge ${ROLE_COLORS[subscription.credentials] ?? "blue"}`}
                             >
-                              {subscription.credentials === "teacher"
-                                ? "🎓"
-                                : "📚"}{" "}
-                              {subscription.credentials === "teacher"
-                                ? "Profe"
-                                : "Estudiante"}
+                              {ROLE_ICONS[subscription.credentials] ?? "📚"}{" "}
+                              {ROLE_LABELS[subscription.credentials] ??
+                                "Estudiante"}
                             </span>
                           </div>
                           <span className="item-detail">
@@ -140,10 +175,18 @@ function SubscriptionList() {
                         </div>
                         <div className="subscription-actions">
                           <div className="item-actions">
-                            <button className="action-btn yellow">
-                              Editar
+                            <button
+                              className="action-btn red"
+                              onClick={() =>
+                                handleRemoveSubscription(subscription)
+                              }
+                              disabled={
+                                isRemoving ===
+                                `${subscription.user_id}-${subscription.course_id}`
+                              }
+                            >
+                              Quitar
                             </button>
-                            <button className="action-btn red">Borrar</button>
                           </div>
                         </div>
                       </li>

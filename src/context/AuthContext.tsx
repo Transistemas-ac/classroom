@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type Dispatch,
   type ReactNode,
@@ -22,11 +23,18 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<User | undefined>(() => {
-    if (typeof window === "undefined") return undefined;
+  const [user, setUser] = useState<User | undefined>(undefined);
+
+  useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : undefined;
-  });
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
 
   useAuth(user, setUser, setAuthLoading);
 
