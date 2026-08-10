@@ -1,0 +1,60 @@
+// 🎨 Colors
+$pink: #fe98cc;
+$blue: #54b4f0;
+$yellow: #fecc01;
+$white: #fefffe;
+$purple: #8e53bc;
+$black: #1a1b1b;
+$dark-background: #1b1b1a;
+$dark-card: #2a2a29;
+$dark-card-hover: #323231;
+$white-text: #fefffe;
+$gray-text: #b8b8b7;
+$gray-light-dark: #3a3a39;
+$gray-medium-dark: #6a6a69;
+$gray-dark-theme: #8a8a89;
+$success: #31d05b;
+$danger: #ef4444;
+$shadow-dark: rgba(0, 0, 0, 0.3);
+$shadow-hover-dark: rgba(0, 0, 0, 0.5);
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin transition($property: all, $duration: 0.3s, $ease: ease-in-out) {
+  transition: $property $duration $ease;
+}
+
+@mixin card-shadow {
+  box-shadow: 0 4px 20px $shadow-dark;
+}
+
+@mixin card-shadow-hover {
+  box-shadow: 0 8px 30px $shadow-hover-dark;
+}
+
+// Reset
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+// Fonts
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+
+@font-face {
+  font-family: "Robot Crush";
+  src: url("/fonts/Robot Crush.ttf") format("truetype");
+  font-display: swap;
+}
