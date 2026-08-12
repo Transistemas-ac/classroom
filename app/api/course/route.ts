@@ -27,7 +27,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const [courses, total] = await Promise.all([
     prisma.course.findMany({
       ...(requested ? { skip, take: pageSize } : {}),
-      orderBy: { created_at: "desc" },
+      orderBy: { start_date: "desc" },
     }),
     prisma.course.count(),
   ]);
