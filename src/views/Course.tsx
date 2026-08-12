@@ -73,9 +73,9 @@ function Course({ courseId }: { courseId?: number }) {
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("es-AR", {
-      day: "numeric",
-      month: "short",
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
       year: "numeric",
     });
   };
