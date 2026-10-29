@@ -23,7 +23,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "sass": "^1.90.0",
-    "zod": "^4.0.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -41,6 +41,8 @@
   },
   "overrides": {
     "postcss": "^8.5.26",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "deepmerge-ts": "^8.0.2",
+    "zod": "^4.6.7"
   }
 }
